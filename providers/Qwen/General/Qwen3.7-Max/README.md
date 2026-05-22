@@ -1,6 +1,6 @@
 # Qwen3.7-Max
 
-Frontier chat-completion model from Alibaba Cloud’s Qwen 3.7 line — optimized for high-quality instruction following, multilingual dialogue, and production agent workflows on the Qubrid platform.
+Frontier chat-completion model from Alibaba Cloud’s Qwen 3.7 line - optimized for high-quality instruction following, multilingual dialogue, and production agent workflows on the Qubrid platform.
 
 ## Overview
 
@@ -41,6 +41,7 @@ Set `QUBRID_API_KEY` and call the API via your preferred SDK:
 
 | Language | Example |
 |:---------|:--------|
+| [**One Click Apps**](./One%20Click%20App/) | [Chat tester](./One%20Click%20App/tester-playground/) · [Prompt Studio](./One%20Click%20App/prompt-studio/) - paste key & run ([guide](./One%20Click%20App/prompt-studio/README.md)) |
 | [Python](./Python/chat.py) | OpenAI Python SDK |
 | [JavaScript](./JavaScript/chat.js) | OpenAI Node SDK |
 | [Go](./Go/main.go) | Native HTTP client |

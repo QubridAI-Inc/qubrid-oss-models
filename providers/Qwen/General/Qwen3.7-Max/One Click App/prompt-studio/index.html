@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qwen3.7-Max · Prompt Studio</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --panel: #12121a;
+      --panel-2: #1a1a26;
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #f4f4f8;
+      --muted: #9494b8;
+      --accent: #f97316;
+      --accent-2: #a855f7;
+      --accent-3: #fbbf24;
+      --ok: #4ade80;
+      --danger: #fb7185;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 0% 0%, rgba(249, 115, 22, 0.15), transparent),
+        radial-gradient(ellipse 50% 40% at 100% 0%, rgba(168, 85, 247, 0.12), transparent),
+        radial-gradient(ellipse 40% 30% at 50% 100%, rgba(251, 191, 36, 0.08), transparent);
+      pointer-events: none;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(18, 18, 26, 0.85);
+      backdrop-filter: blur(12px);
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      font-size: 1.2rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .brand h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand p { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      transition: transform 0.12s, filter 0.12s;
+    }
+
+    button:active { transform: scale(0.98); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 0.5rem 0.85rem;
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: rgba(249, 115, 22, 0.4); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      font-weight: 600;
+      padding: 0.55rem 1rem;
+    }
+
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) 1fr;
+      min-height: 0;
+    }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+      body { overflow: auto; }
+      .shell { height: auto; min-height: 100vh; }
+    }
+
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--panel);
+      min-height: 0;
+    }
+
+    .editor-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      gap: 0.75rem;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 140px;
+      padding: 0.85rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.5;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: rgba(168, 85, 247, 0.5);
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .chip {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      color: var(--text);
+      border-color: rgba(249, 115, 22, 0.45);
+    }
+
+    .editor-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .status { font-size: 0.75rem; color: var(--muted); min-height: 1.2em; }
+    .status.ok { color: var(--ok); }
+    .status.err { color: var(--danger); }
+
+    .preview-pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #0d0d12;
+    }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .tabs { display: flex; gap: 0.25rem; }
+
+    .tab {
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
+    }
+
+    .tab.active {
+      background: var(--panel-2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .preview-content {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    .empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .empty-state svg { opacity: 0.35; margin-bottom: 1rem; }
+
+    .empty-state h2 {
+      font-size: 1rem;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+
+    #preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+      display: none;
+    }
+
+    .ide-wrap {
+      display: none;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      background: #1e1e2e;
+      font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .ide-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.45rem 0.75rem;
+      background: #181825;
+      border-bottom: 1px solid #313244;
+      flex-shrink: 0;
+    }
+
+    .ide-traffic { display: flex; gap: 6px; }
+    .ide-traffic span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #45475a;
+    }
+    .ide-traffic span:nth-child(1) { background: #f38ba8; }
+    .ide-traffic span:nth-child(2) { background: #f9e2af; }
+    .ide-traffic span:nth-child(3) { background: #a6e3a1; }
+
+    .ide-tabs { display: flex; gap: 2px; flex: 1; }
+
+    .ide-tab {
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px 6px 0 0;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-size: 0.78rem;
+      border: 1px solid #313244;
+      border-bottom: none;
+    }
+
+    .ide-tab.streaming::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-left: 6px;
+      background: #a6e3a1;
+      border-radius: 50%;
+      animation: pulse 1s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.35; }
+      50% { opacity: 1; }
+    }
+
+    .ide-meta {
+      font-size: 0.72rem;
+      color: #6c7086;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    .ide-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .ide-gutter {
+      flex-shrink: 0;
+      width: 3.25rem;
+      padding: 12px 8px 12px 0;
+      text-align: right;
+      color: #585b70;
+      line-height: 1.5;
+      user-select: none;
+      overflow: hidden;
+      background: #181825;
+      border-right: 1px solid #313244;
+      white-space: pre;
+    }
+
+    .ide-scroll {
+      flex: 1;
+      overflow: auto;
+      background: #1e1e2e;
+    }
+
+    .ide-code {
+      margin: 0;
+      padding: 12px 16px;
+      line-height: 1.5;
+      color: #cdd6f4;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    .ide-code .hl-tag { color: #89b4fa; }
+    .ide-code .hl-name { color: #89dceb; }
+    .ide-code .hl-attr { color: #cba6f7; }
+    .ide-code .hl-str { color: #a6e3a1; }
+    .ide-code .hl-comment { color: #6c7086; font-style: italic; }
+    .ide-code .hl-keyword { color: #f38ba8; }
+
+    .stream-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.1em;
+      background: #f5e0dc;
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+
+    .stream-cursor.off { display: none; }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .view-preview #preview-frame { display: block; }
+    .view-preview .empty-state { display: none; }
+    .view-preview .ide-wrap { display: none; }
+    .view-source .ide-wrap { display: flex; }
+    .view-source #preview-frame { display: none; }
+    .view-source .empty-state { display: none; }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .overlay.open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: min(420px, 100%);
+    }
+
+    .modal h3 { margin-bottom: 0.35rem; }
+    .modal p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+
+    .modal input {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .loader {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.35rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .sliders {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .slider-field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .slider-field label span { color: var(--text); font-weight: 600; font-size: 0.8rem; }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 0.35rem;
+      accent-color: var(--accent-2);
+    }
+
+    .slider-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <h1>Prompt <em>Studio</em></h1>
+        <p>Qwen3.7-Max · One Click Apps · Build UI from a prompt</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-ghost" id="btn-download" disabled>Download HTML</button>
+        <button type="button" class="btn-ghost" id="btn-key">API key</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="editor-pane">
+        <div class="editor-body">
+          <div>
+            <label for="prompt">Your prompt</label>
+            <textarea id="prompt" placeholder="Describe the page or UI you want…&#10;&#10;Example: A minimal pricing page for a SaaS product with three tiers, soft gradients, and a dark theme."></textarea>
+          </div>
+          <div class="sliders">
+            <div class="slider-field">
+              <label>Max output tokens <span id="max-tokens-val">16384</span></label>
+              <input type="range" id="max-tokens" min="2048" max="32768" step="1024" value="16384" />
+              <p class="slider-hint">Increase if CSS/HTML cuts off mid-generation (finish reason: length).</p>
+            </div>
+            <div class="slider-field">
+              <label>Temperature <span id="temp-val">0.6</span></label>
+              <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.6" />
+            </div>
+          </div>
+          <div>
+            <label>Examples</label>
+            <div class="chips" id="chips"></div>
+          </div>
+        </div>
+        <div class="editor-footer">
+          <div class="status" id="status">Connect your API key to generate</div>
+          <button type="button" class="btn-primary" id="btn-generate" disabled>Generate preview</button>
+        </div>
+      </aside>
+
+      <main class="preview-pane view-preview" id="preview-pane">
+        <div class="preview-toolbar">
+          <div class="tabs">
+            <button type="button" class="tab active" data-view="preview">Live preview</button>
+            <button type="button" class="tab" data-view="source">Source</button>
+          </div>
+          <span style="font-size:0.75rem;color:var(--muted)" id="preview-meta">No output yet</span>
+        </div>
+        <div class="preview-content">
+          <div class="empty-state" id="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 9h18M9 21V9"/>
+            </svg>
+            <h2>Your creation appears here</h2>
+            <p>Enter a prompt and click Generate. Qwen3.7-Max returns HTML, CSS, and JS — rendered instantly, no CDN required.</p>
+          </div>
+          <iframe id="preview-frame" title="Generated preview" sandbox="allow-scripts"></iframe>
+          <div class="ide-wrap" id="ide-wrap">
+            <div class="ide-titlebar">
+              <div class="ide-traffic"><span></span><span></span><span></span></div>
+              <div class="ide-tabs">
+                <span class="ide-tab" id="ide-tab">generated.html</span>
+              </div>
+              <span class="ide-meta" id="ide-meta">UTF-8 · HTML · Qwen3.7-Max</span>
+            </div>
+            <div class="ide-body">
+              <div class="ide-gutter" id="ide-gutter">1</div>
+              <div class="ide-scroll" id="ide-scroll">
+                <pre class="ide-code"><code id="source-code"></code><span class="stream-cursor off" id="stream-cursor"></span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="overlay open" id="overlay">
+    <div class="modal">
+      <h3>Qubrid API key</h3>
+      <p>Required to call Qwen/Qwen3.7-Max. Stored in this browser session only.</p>
+      <input type="password" id="api-key" placeholder="Your QUBRID API key" autocomplete="off" />
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="btn-skip">Later</button>
+        <button type="button" class="btn-primary" id="btn-save-key">Save</button>
+      </div>
+      <p class="slider-hint" style="margin-top:0.75rem">Start with <code>run.bat</code> or <code>python app.py</code>, then paste your key. Setup &amp; troubleshooting: <code>README.md</code> in this folder.</p>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "qubrid_prompt_studio_key";
+    const MAX_TOKENS_KEY = "qubrid_prompt_studio_max_tokens";
+    const PREVIEW_GUARD = "<script>(function(){document.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;var h=(a.getAttribute('href')||'').trim();if(!h||h==='#'||h.startsWith('javascript:')){e.preventDefault();return;}e.preventDefault();try{window.open(a.href,'_blank','noopener,noreferrer');}catch(err){}},true);}())<\/script>";
+    const EXAMPLES = [
+      "A landing page for an AI infrastructure startup with hero, features grid, and gradient accents.",
+      "An interactive calculator with a sleek dark UI and orange highlight buttons.",
+      "A personal portfolio with project cards, smooth hover animations, and a contact form (visual only).",
+      "A weather dashboard card with animated clouds (CSS only, mock data in JS).",
+      "A kanban board with three columns and draggable-looking cards (visual demo, no real drag required).",
+    ];
+
+    const els = {
+      prompt: document.getElementById("prompt"),
+      chips: document.getElementById("chips"),
+      btnGenerate: document.getElementById("btn-generate"),
+      btnDownload: document.getElementById("btn-download"),
+      btnKey: document.getElementById("btn-key"),
+      status: document.getElementById("status"),
+      previewPane: document.getElementById("preview-pane"),
+      previewFrame: document.getElementById("preview-frame"),
+      sourceCode: document.getElementById("source-code"),
+      ideGutter: document.getElementById("ide-gutter"),
+      ideScroll: document.getElementById("ide-scroll"),
+      ideTab: document.getElementById("ide-tab"),
+      ideMeta: document.getElementById("ide-meta"),
+      streamCursor: document.getElementById("stream-cursor"),
+      emptyState: document.getElementById("empty-state"),
+      previewMeta: document.getElementById("preview-meta"),
+      overlay: document.getElementById("overlay"),
+      apiKey: document.getElementById("api-key"),
+      btnSaveKey: document.getElementById("btn-save-key"),
+      btnSkip: document.getElementById("btn-skip"),
+      maxTokens: document.getElementById("max-tokens"),
+      maxTokensVal: document.getElementById("max-tokens-val"),
+      temperature: document.getElementById("temperature"),
+      tempVal: document.getElementById("temp-val"),
+    };
+
+    let apiKey = sessionStorage.getItem(STORAGE_KEY) || "";
+    let lastHtml = "";
+    let streamRaw = "";
+    let busy = false;
+    let previewTimer = null;
+    let paintRaf = null;
+    let tokenCount = 0;
+
+    function setStatus(text, kind = "") {
+      els.status.textContent = text;
+      els.status.className = "status " + kind;
+    }
+
+    function updateControls() {
+      els.btnGenerate.disabled = !apiKey.trim() || busy;
+      els.btnDownload.disabled = !lastHtml;
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function highlightHtml(code) {
+      const esc = escapeHtml(code);
+      return esc
+        .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="hl-comment">$1</span>')
+        .replace(/(&lt;\/?)([\w-]+)/g, '$1<span class="hl-tag">$2</span>')
+        .replace(/\b(function|const|let|var|return|if|else|for|while|class|import|from)\b/g, '<span class="hl-keyword">$1</span>')
+        .replace(/([a-zA-Z-]+)=/g, '<span class="hl-attr">$1</span>=')
+        .replace(/"[^"]*"/g, (m) => `<span class="hl-str">${m}</span>`)
+        .replace(/'[^']*'/g, (m) => `<span class="hl-str">${m}</span>`);
+    }
+
+    function updateGutter(text) {
+      const lines = Math.max(1, text.split("\n").length);
+      const nums = [];
+      for (let i = 1; i <= lines; i++) nums.push(i);
+      els.ideGutter.textContent = nums.join("\n");
+    }
+
+    function paintSourceStream() {
+      paintRaf = null;
+      const text = streamRaw;
+      els.sourceCode.textContent = text || "/* Waiting for first token… */";
+      updateGutter(text || "");
+      const lines = Math.max(1, (text || "").split("\n").length);
+      els.ideMeta.textContent = `Streaming · ${text.length.toLocaleString()} chars · ${lines} lines · ${tokenCount} chunks`;
+      els.ideScroll.scrollTop = els.ideScroll.scrollHeight;
+      els.ideGutter.scrollTop = els.ideScroll.scrollTop;
+    }
+
+    function scheduleSourcePaint() {
+      if (!paintRaf) {
+        paintRaf = requestAnimationFrame(paintSourceStream);
+      }
+    }
+
+    function appendStreamDelta(chunk) {
+      streamRaw += chunk;
+      tokenCount += 1;
+      scheduleSourcePaint();
+    }
+
+    function setSourceCodeFinal(text) {
+      streamRaw = text;
+      els.sourceCode.innerHTML = highlightHtml(text || "");
+      updateGutter(text || "");
+      els.streamCursor.classList.add("off");
+      els.ideTab.classList.remove("streaming");
+      els.ideMeta.textContent = `UTF-8 · HTML · ${(text || "").length.toLocaleString()} chars`;
+      els.ideScroll.scrollTop = els.ideScroll.scrollHeight;
+    }
+
+    function beginStreaming() {
+      streamRaw = "";
+      tokenCount = 0;
+      els.streamCursor.classList.remove("off");
+      els.ideTab.classList.add("streaming");
+      els.sourceCode.textContent = "/* Waiting for first token… */";
+      updateGutter("");
+      els.ideMeta.textContent = "Connecting to Qwen3.7-Max…";
+    }
+
+    function prepareHtmlForPreview(html) {
+      if (!html) return "";
+      let doc = html;
+      if (!/<base\s/i.test(doc)) {
+        if (/<head[^>]*>/i.test(doc)) {
+          doc = doc.replace(/<head([^>]*)>/i, "<head$1><base target=\"_blank\">");
+        } else {
+          doc = "<head><base target=\"_blank\"></head>" + doc;
+        }
+      }
+      if (/<\/body>/i.test(doc)) {
+        doc = doc.replace(/<\/body>/i, PREVIEW_GUARD + "</body>");
+      } else {
+        doc += PREVIEW_GUARD;
+      }
+      return doc;
+    }
+
+    function extractHtml(raw) {
+      if (!raw) return "";
+      let text = raw.trim();
+
+      const fence = /```(?:html)?\s*([\s\S]*?)```/i.exec(text);
+      if (fence) text = fence[1].trim();
+
+      const docStart = text.search(/<!DOCTYPE\s+html/i);
+      const htmlStart = text.search(/<html[\s>]/i);
+      const start = docStart >= 0 ? docStart : htmlStart >= 0 ? htmlStart : -1;
+
+      if (start >= 0) {
+        text = text.slice(start);
+        const end = text.lastIndexOf("</html>");
+        if (end >= 0) text = text.slice(0, end + 7);
+      }
+
+      return text.trim();
+    }
+
+    function schedulePreviewUpdate() {
+      if (previewTimer) clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        const html = extractHtml(streamRaw);
+        if (html) {
+          lastHtml = html;
+          els.previewFrame.srcdoc = prepareHtmlForPreview(html);
+          els.previewMeta.textContent = "Live preview updating…";
+          updateControls();
+        }
+      }, 450);
+    }
+
+    function finishOutput(raw, meta) {
+      if (paintRaf) cancelAnimationFrame(paintRaf);
+      paintRaf = null;
+
+      const html = extractHtml(raw);
+      lastHtml = html;
+      setSourceCodeFinal(raw);
+      els.previewMeta.textContent = html
+        ? "Preview ready — open Live preview tab"
+        : "Could not parse HTML — check source";
+
+      if (html) {
+        els.previewFrame.srcdoc = prepareHtmlForPreview(html);
+      }
+
+      const truncated = meta.finish_reason === "length";
+      if (meta.usage) {
+        const u = meta.usage;
+        let msg = `Done · ${u.prompt_tokens ?? "?"} in / ${u.completion_tokens ?? "?"} out (limit ${meta.max_tokens ?? els.maxTokens.value})`;
+        if (truncated) {
+          msg += " — truncated; raise Max output tokens";
+          setStatus(msg, "err");
+          els.previewMeta.textContent = "Preview may be incomplete (token limit)";
+        } else {
+          setStatus(msg, "ok");
+        }
+      } else if (truncated) {
+        setStatus("Truncated at token limit — raise Max output tokens", "err");
+      } else {
+        setStatus(
+          html ? "Complete — switch to Live preview tab" : "See source tab",
+          html ? "ok" : "err"
+        );
+      }
+
+      updateControls();
+    }
+
+    function setView(view) {
+      document.querySelectorAll(".tab").forEach((t) => {
+        t.classList.toggle("active", t.dataset.view === view);
+      });
+      els.previewPane.classList.remove("view-preview", "view-source");
+      els.previewPane.classList.add(view === "source" ? "view-source" : "view-preview");
+    }
+
+    async function generate() {
+      const prompt = els.prompt.value.trim();
+      if (!apiKey || !prompt || busy) return;
+
+      busy = true;
+      streamRaw = "";
+      lastHtml = "";
+      updateControls();
+      setStatus("Streaming from Qwen3.7-Max…");
+      els.btnGenerate.innerHTML = '<span class="loader"></span>Generating…';
+      els.emptyState.style.display = "none";
+      setView("source");
+      beginStreaming();
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: apiKey,
+            prompt,
+            stream: true,
+            max_tokens: parseInt(els.maxTokens.value, 10),
+            temperature: parseFloat(els.temperature.value),
+          }),
+        });
+
+        const ctype = res.headers.get("content-type") || "";
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const err = data.error?.message || data.error || `Request failed (${res.status})`;
+          setStatus(err, "err");
+          els.sourceCode.textContent = `// Error\n${err}`;
+          return;
+        }
+
+        if (!ctype.includes("text/event-stream") || !res.body) {
+          const data = await res.json();
+          streamRaw = data.raw || "";
+          scheduleSourcePaint();
+          finishOutput(streamRaw, data);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let gotDone = false;
+
+        function handleEvent(evt) {
+          if (gotDone) return true;
+          if (evt.type === "delta" && evt.content) {
+            appendStreamDelta(evt.content);
+            schedulePreviewUpdate();
+          } else if (evt.type === "error") {
+            setStatus(evt.error || "Stream error", "err");
+            els.sourceCode.textContent = streamRaw + `\n\n/* Error: ${evt.error} */`;
+            return true;
+          } else if (evt.type === "done") {
+            finishOutput(streamRaw, evt);
+            gotDone = true;
+            return true;
+          }
+          return false;
+        }
+
+        function parseSseBlock(block) {
+          for (const line of block.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              handleEvent(JSON.parse(line.slice(6)));
+            } catch {
+              /* skip malformed */
+            }
+          }
+        }
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let sep;
+          while ((sep = buffer.indexOf("\n\n")) !== -1) {
+            const block = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            parseSseBlock(block);
+          }
+        }
+
+        if (buffer.trim()) {
+          parseSseBlock(buffer);
+        }
+
+        if (!gotDone && streamRaw) {
+          finishOutput(streamRaw, {});
+        }
+      } catch (e) {
+        setStatus("Network error — is python app.py running?", "err");
+      } finally {
+        busy = false;
+        els.btnGenerate.textContent = "Generate preview";
+        els.streamCursor.classList.add("off");
+        els.ideTab.classList.remove("streaming");
+        updateControls();
+      }
+    }
+
+    els.ideScroll.addEventListener("scroll", () => {
+      els.ideGutter.scrollTop = els.ideScroll.scrollTop;
+    });
+
+    EXAMPLES.forEach((text) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = text.length > 48 ? text.slice(0, 48) + "…" : text;
+      b.title = text;
+      b.addEventListener("click", () => {
+        els.prompt.value = text;
+        els.prompt.focus();
+      });
+      els.chips.appendChild(b);
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => setView(tab.dataset.view));
+    });
+
+    els.btnGenerate.addEventListener("click", generate);
+    els.prompt.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        generate();
+      }
+    });
+
+    els.btnDownload.addEventListener("click", () => {
+      if (!lastHtml) return;
+      const blob = new Blob([lastHtml], { type: "text/html" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "qwen-prompt-studio.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    els.btnKey.addEventListener("click", () => {
+      els.apiKey.value = apiKey;
+      els.overlay.classList.add("open");
+    });
+
+    els.btnSaveKey.addEventListener("click", () => {
+      apiKey = els.apiKey.value.trim();
+      if (!apiKey) return;
+      sessionStorage.setItem(STORAGE_KEY, apiKey);
+      els.overlay.classList.remove("open");
+      setStatus("Ready — describe your UI and generate", "ok");
+      updateControls();
+    });
+
+    els.btnSkip.addEventListener("click", () => els.overlay.classList.remove("open"));
+    els.apiKey.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") els.btnSaveKey.click();
+    });
+
+    const savedMax = sessionStorage.getItem(MAX_TOKENS_KEY);
+    if (savedMax) {
+      els.maxTokens.value = savedMax;
+      els.maxTokensVal.textContent = Number(savedMax).toLocaleString();
+    }
+
+    els.maxTokens.addEventListener("input", () => {
+      const v = els.maxTokens.value;
+      els.maxTokensVal.textContent = Number(v).toLocaleString();
+      sessionStorage.setItem(MAX_TOKENS_KEY, v);
+    });
+
+    els.temperature.addEventListener("input", () => {
+      els.tempVal.textContent = els.temperature.value;
+    });
+
+    if (apiKey) {
+      els.overlay.classList.remove("open");
+      setStatus("Ready — describe your UI and generate", "ok");
+    }
+    updateControls();
+  </script>
+</body>
+</html>

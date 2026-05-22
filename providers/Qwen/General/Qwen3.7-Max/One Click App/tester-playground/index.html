@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qwen3.7-Max · Tester / Playground</title>
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --surface: #141a24;
+      --surface-2: #1c2433;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e8edf5;
+      --muted: #8b9bb4;
+      --accent: #5eead4;
+      --accent-2: #818cf8;
+      --user-bubble: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+      --assistant-bubble: #1c2433;
+      --danger: #f87171;
+      --radius: 14px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(94, 234, 212, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 10%, rgba(129, 140, 248, 0.14), transparent),
+        radial-gradient(ellipse 50% 30% at 50% 100%, rgba(67, 56, 202, 0.1), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 920px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 1rem 1rem;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 0 1.25rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .brand h1 {
+      font-size: 1.35rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    .brand span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    button, .btn {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      transition: transform 0.15s, opacity 0.15s, background 0.15s;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    .btn-ghost {
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 0.55rem 0.9rem;
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: #243044; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2dd4bf, #6366f1);
+      color: #0c0f14;
+      font-weight: 600;
+      padding: 0.65rem 1.1rem;
+    }
+
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 380px;
+      max-height: calc(100vh - 280px);
+    }
+
+    .welcome {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+    }
+
+    .welcome h2 {
+      font-size: 1.1rem;
+      color: var(--text);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1.25rem;
+    }
+
+    .chip {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      color: var(--text);
+      border-color: rgba(94, 234, 212, 0.35);
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 88%;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user { align-self: flex-end; }
+    .msg.assistant { align-self: flex-start; }
+
+    .msg-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .msg.user .msg-label { text-align: right; }
+
+    .bubble {
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+    }
+
+    .msg.user .bubble {
+      background: var(--user-bubble);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.assistant .bubble {
+      background: var(--assistant-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .typing {
+      display: flex;
+      gap: 5px;
+      padding: 0.85rem 1rem;
+      background: var(--assistant-bubble);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: fit-content;
+    }
+
+    .typing span {
+      width: 7px;
+      height: 7px;
+      background: var(--muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .composer {
+      display: flex;
+      gap: 0.65rem;
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      min-height: 52px;
+      max-height: 160px;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.45;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: rgba(94, 234, 212, 0.45);
+      box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.12);
+    }
+
+    .status-bar {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 0.35rem 1rem 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .status-bar .ok { color: var(--accent); }
+    .status-bar .err { color: var(--danger); }
+
+    /* Modal */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      width: min(440px, 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .modal h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .modal p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .field input[type="password"],
+    .field input[type="text"],
+    .field input[type="range"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1.25rem;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+      line-height: 1.4;
+    }
+
+    .hint a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <h1>Qwen<span>3.7-Max</span></h1>
+        <p>Tester / Playground · One Click Apps · Qubrid</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-ghost" id="btn-clear">Clear chat</button>
+        <button type="button" class="btn-ghost" id="btn-settings">API key</button>
+      </div>
+    </header>
+
+    <div class="chat-panel">
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <h2>Chat with Qwen3.7-Max</h2>
+          <p>Add your Qubrid API key, then send a message. Your key stays in the browser and is only sent to this local app.</p>
+          <div class="chips">
+            <button type="button" class="chip" data-prompt="Summarize this support ticket into bullet-point next steps for the agent.">Support ticket summary</button>
+            <button type="button" class="chip" data-prompt="Explain quantum computing in three simple paragraphs.">Explain a topic</button>
+            <button type="button" class="chip" data-prompt="Write a short Python function to deduplicate a list while preserving order.">Code helper</button>
+          </div>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span id="status-text">Set your API key to begin</span>
+        <span id="usage-text"></span>
+      </div>
+      <form class="composer" id="composer">
+        <textarea
+          id="input"
+          rows="2"
+          placeholder="Message Qwen3.7-Max…"
+          autocomplete="off"
+        ></textarea>
+        <button type="submit" class="btn-primary" id="btn-send" disabled>Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="overlay open" id="overlay">
+    <div class="modal">
+      <h3>Connect to Qubrid</h3>
+      <p>Paste your API key from the <a href="https://platform.qubrid.com" target="_blank" rel="noopener">Qubrid platform</a>. It is stored only in this browser session.</p>
+      <div class="field">
+        <label for="api-key">Qubrid API key</label>
+        <input type="password" id="api-key" placeholder="sk-…" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="temperature">Temperature · <span id="temp-val">0.7</span></label>
+        <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" />
+      </div>
+      <div class="field">
+        <label for="max-tokens">Max tokens · <span id="tokens-val">500</span></label>
+        <input type="range" id="max-tokens" min="64" max="4096" step="64" value="500" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="btn-skip">Later</button>
+        <button type="button" class="btn-primary" id="btn-save-key">Save & start</button>
+      </div>
+      <p class="hint">Run locally: double-click <code>run.bat</code> (Windows) or <code>./run.sh</code> / <code>python app.py</code>. See <code>README.md</code> for setup and troubleshooting.</p>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "qubrid_qwen37_api_key";
+
+    const els = {
+      messages: document.getElementById("messages"),
+      welcome: document.getElementById("welcome"),
+      input: document.getElementById("input"),
+      composer: document.getElementById("composer"),
+      btnSend: document.getElementById("btn-send"),
+      btnClear: document.getElementById("btn-clear"),
+      btnSettings: document.getElementById("btn-settings"),
+      overlay: document.getElementById("overlay"),
+      apiKey: document.getElementById("api-key"),
+      btnSaveKey: document.getElementById("btn-save-key"),
+      btnSkip: document.getElementById("btn-skip"),
+      statusText: document.getElementById("status-text"),
+      usageText: document.getElementById("usage-text"),
+      temperature: document.getElementById("temperature"),
+      maxTokens: document.getElementById("max-tokens"),
+      tempVal: document.getElementById("temp-val"),
+      tokensVal: document.getElementById("tokens-val"),
+    };
+
+    let apiKey = sessionStorage.getItem(STORAGE_KEY) || "";
+    let conversation = [];
+    let busy = false;
+
+    function setStatus(text, kind = "") {
+      els.statusText.textContent = text;
+      els.statusText.className = kind;
+    }
+
+    function updateSendState() {
+      const ready = apiKey.trim().length > 0 && !busy;
+      els.btnSend.disabled = !ready;
+    }
+
+    function openSettings() {
+      els.apiKey.value = apiKey;
+      els.overlay.classList.add("open");
+      els.apiKey.focus();
+    }
+
+    function closeSettings() {
+      els.overlay.classList.remove("open");
+    }
+
+    function saveKey() {
+      apiKey = els.apiKey.value.trim();
+      if (!apiKey) return;
+      sessionStorage.setItem(STORAGE_KEY, apiKey);
+      closeSettings();
+      setStatus("Connected · model Qwen/Qwen3.7-Max", "ok");
+      updateSendState();
+      els.input.focus();
+    }
+
+    function appendMessage(role, content) {
+      if (els.welcome) els.welcome.remove();
+
+      const wrap = document.createElement("div");
+      wrap.className = `msg ${role}`;
+
+      const label = document.createElement("div");
+      label.className = "msg-label";
+      label.textContent = role === "user" ? "You" : "Qwen3.7-Max";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = content;
+
+      wrap.append(label, bubble);
+      els.messages.appendChild(wrap);
+      els.messages.scrollTop = els.messages.scrollHeight;
+      return wrap;
+    }
+
+    function showTyping() {
+      const wrap = document.createElement("div");
+      wrap.className = "msg assistant";
+      wrap.id = "typing-indicator";
+      wrap.innerHTML = `
+        <div class="msg-label">Qwen3.7-Max</div>
+        <div class="typing"><span></span><span></span><span></span></div>
+      `;
+      els.messages.appendChild(wrap);
+      els.messages.scrollTop = els.messages.scrollHeight;
+    }
+
+    function hideTyping() {
+      document.getElementById("typing-indicator")?.remove();
+    }
+
+    async function sendMessage(text) {
+      if (!apiKey || busy) return;
+      const message = text.trim();
+      if (!message) return;
+
+      busy = true;
+      updateSendState();
+      appendMessage("user", message);
+      els.input.value = "";
+      showTyping();
+      setStatus("Thinking…");
+
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: apiKey,
+            message,
+            messages: conversation,
+            temperature: parseFloat(els.temperature.value),
+            max_tokens: parseInt(els.maxTokens.value, 10),
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        hideTyping();
+
+        if (!res.ok) {
+          const err =
+            data.error?.message ||
+            data.error ||
+            (typeof data.detail === "string" ? data.detail : null) ||
+            `Request failed (${res.status})`;
+          setStatus(err, "err");
+          appendMessage("assistant", `Error: ${err}`);
+          return;
+        }
+
+        conversation = data.messages || conversation;
+        appendMessage("assistant", data.reply || "(empty response)");
+        setStatus("Ready", "ok");
+
+        if (data.usage) {
+          const u = data.usage;
+          els.usageText.textContent = `tokens: ${u.prompt_tokens ?? "—"} in · ${u.completion_tokens ?? "—"} out`;
+        }
+      } catch (e) {
+        hideTyping();
+        setStatus("Network error — is python app.py running?", "err");
+        appendMessage("assistant", `Error: ${e.message}`);
+      } finally {
+        busy = false;
+        updateSendState();
+        els.input.focus();
+      }
+    }
+
+    els.composer.addEventListener("submit", (e) => {
+      e.preventDefault();
+      sendMessage(els.input.value);
+    });
+
+    els.input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        els.composer.requestSubmit();
+      }
+    });
+
+    els.btnSaveKey.addEventListener("click", saveKey);
+    els.apiKey.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveKey();
+    });
+    els.btnSkip.addEventListener("click", closeSettings);
+    els.btnSettings.addEventListener("click", openSettings);
+    els.btnClear.addEventListener("click", () => {
+      conversation = [];
+      els.messages.innerHTML = `
+        <div class="welcome" id="welcome">
+          <h2>Chat with Qwen3.7-Max</h2>
+          <p>Conversation cleared. Send a new message to continue.</p>
+        </div>`;
+      els.usageText.textContent = "";
+      setStatus(apiKey ? "Ready" : "Set your API key to begin", apiKey ? "ok" : "");
+    });
+
+    document.querySelectorAll(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        els.input.value = chip.dataset.prompt || "";
+        if (apiKey) sendMessage(els.input.value);
+        else openSettings();
+      });
+    });
+
+    els.temperature.addEventListener("input", () => {
+      els.tempVal.textContent = els.temperature.value;
+    });
+    els.maxTokens.addEventListener("input", () => {
+      els.tokensVal.textContent = els.maxTokens.value;
+    });
+
+    if (apiKey) {
+      closeSettings();
+      setStatus("Connected · model Qwen/Qwen3.7-Max", "ok");
+    }
+    updateSendState();
+  </script>
+</body>
+</html>
